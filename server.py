@@ -1,4 +1,5 @@
 from kafka import KafkaConsumer
+from kafka import KafkaProducer
 
 import json
 from datetime import datetime, timedelta
@@ -16,7 +17,9 @@ consumer = KafkaConsumer(
     consumer_timeout_ms=1000                                        # 데이터를 기다리는 최대 시간
 )
 
-info('[Start] consumer started')
+producer = KafkaProducer(bootstrap_servers=['localhost:9092'])
+
+info('[Start] consumer and producer started')
 
 try:
     while True:
@@ -41,10 +44,34 @@ try:
                         content_based_filtering()
 
                     elif request['command'] == 'collaborative_all':
+                        # 응답을 위한 correlationId 확인
+                        correlation_id = None
+                        for header in message.headers:
+                            if header[0] == 'kafka_correlationId':
+                                correlation_id = header[1]
+                                break
+
+                        if correlation_id is None:
+                            info(" [Kafka] No correlation id found")
+                            continue
+
                         # 전체 회원에 대해 추천 정보를 업데이트
                         df_svd_preds, music_data, user_index_dict, update_time = collaborative_filtering()
 
+                        # 완료 응답
+                        headers = [('kafka_correlationId', correlation_id)]
+
+                        producer.send('musicRecSysReply', value=b'all', headers=headers)
+                        info(" [Kafka] collaborative_all request replied")
+
                     elif request['command'] == 'collaborative_one':
+                        # 응답을 위한 correlationId 확인
+                        correlation_id = None
+                        for header in message.headers:
+                            if header[0] == 'kafka_correlationId':
+                                correlation_id = header[1]
+                                break
+
                         # 갖고 있는 예측 평점 정보가 오래되었으면 업데이트
                         current_time = datetime.now()
                         if update_time == None or current_time - update_time >= timedelta(minutes=2):
@@ -52,6 +79,12 @@ try:
 
                         # user_id 회원에 대해 추천 결과 업데이트
                         save_recommendations(int(request['user_id']), df_svd_preds, music_data, user_index_dict)
+
+                        # 완료 응답
+                        headers = [('kafka_correlationId', correlation_id)]
+
+                        producer.send('musicRecSysReply', value=bytes(request['user_id']), headers=headers)
+                        info(" [Kafka] collaborative_all request replied")
 
         # else:
         #    print("메시지 없음, 계속 대기 중...")
@@ -62,5 +95,6 @@ except KeyboardInterrupt:
     info('[Interrupt] consumer stopping')
 finally:
     consumer.close()
+    producer.close()
     close_mysql_connection()
-    info('[End] consumer stopped')
+    info('[End] consumer and producer stopped')
