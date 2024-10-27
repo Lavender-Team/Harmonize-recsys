@@ -124,7 +124,12 @@ def collaborative_filtering():
 def save_recommendations(user_id, df_svd_preds, music_data, user_index_dict):
 
     # 전체 회원을 상대로 로그 기반으로 예측한 평점에서 user_id번 사용자 데이터 추출
-    recommendations = df_svd_preds.iloc[user_index_dict[user_id]]
+    try:
+        recommendations = df_svd_preds.iloc[user_index_dict[user_id]]
+    except KeyError as e:
+        # 새로운 회원이라 df_svd_preds에 존재하지 않으면 KeyError 던짐
+        raise
+
 
     # 사용자가 북마크한 음악 조회
     bookmark_data = fetch_bookmark(get_own_connection(), user_id)
@@ -154,7 +159,7 @@ def save_recommendations(user_id, df_svd_preds, music_data, user_index_dict):
     recommendations_data.reset_index(drop=True, inplace=True)
 
     # 상위 100개만 선택
-    recommendations_data = recommendations_data[:100]
+    recommendations_data = recommendations_data[:20]
     recommendations_data = recommendations_data[['music_id', 'pred']]
 
     # 추천 시점 저장
@@ -225,34 +230,40 @@ def process_row(row, shared_dict):
 # 사용자의 선호 장르와 나이대에 따른 가산점 계산
 def update_rating_by_user_data(row, user_data):
     # 나이
-    age_prefix = user_data['age'] // 10
-    release = row['release_date'].year
-    if age_prefix == 1 and 2018 <= release:
-        row['pred'] += 0.3
-    elif age_prefix == 2 and 2010 <= release <= 2024:
-        row['pred'] += 0.3
-    elif age_prefix == 3 and 1995 <= release <= 2015:
-        row['pred'] += 0.3
-    elif age_prefix == 4 and 1985 <= release <= 2005:
-        row['pred'] += 0.3
-    elif age_prefix == 5 and 1975 <= release <= 1995:
-        row['pred'] += 0.3
-    elif age_prefix == 6 and 1965 <= release <= 1985:
-        row['pred'] += 0.3
+    if user_data.get('age') is not None:
+        age_prefix = user_data['age'] // 10
+        release = row['release_date'].year
+        if age_prefix == 1 and 2018 <= release:
+            row['pred'] += 0.3
+        elif age_prefix == 2 and 2010 <= release <= 2024:
+            row['pred'] += 0.3
+        elif age_prefix == 3 and 1995 <= release <= 2015:
+            row['pred'] += 0.3
+        elif age_prefix == 4 and 1985 <= release <= 2005:
+            row['pred'] += 0.3
+        elif age_prefix == 5 and 1975 <= release <= 1995:
+            row['pred'] += 0.3
+        elif age_prefix == 6 and 1965 <= release <= 1985:
+            row['pred'] += 0.3
 
     # 성별
-    if row['gender'] == user_data['gender']:
-        row['pred'] += 0.4
+    if user_data.get('gender') is not None:
+        if row['gender'] == user_data['gender']:
+            row['pred'] += 0.4
 
     # 장르
-    if row['genre'] in user_data['genre']:
-        row['pred'] += 0.4
+    if user_data.get('genre') is not None:
+        if row['genre'] in user_data['genre']:
+            row['pred'] += 0.4
 
     return row
 
 
 # 음역대에 따른 가산점 계산
 def update_rating_by_pitch_coverage(row, user_data):
+    if user_data.get('highest_pitch') is None or user_data.get('lowest_pitch') is None:
+        return row
+
     coverage = 0.0
 
     highestPitch = PitchConverter.freq_to_pitch(user_data['highest_pitch'])

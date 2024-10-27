@@ -148,14 +148,15 @@ def fetch_user(own_connection, user_id):
         own_connection.begin()
         user_data = dict()
 
-        query = f"SELECT age, gender FROM user WHERE user_id = 1"
+        query = f"SELECT age, gender FROM user WHERE user_id = {user_id}"
         cursor.execute(query)
         result = cursor.fetchone()
 
-        user_data['age'] = result[0]
-        user_data['gender'] = result[1]
+        if result is not None:
+            user_data['age'] = result[0]
+            user_data['gender'] = result[1]
 
-        query = f"SELECT genre FROM user_genre WHERE user_user_id = 1"
+        query = f"SELECT genre FROM user_genre WHERE user_user_id = {user_id}"
         cursor.execute(query)
         result = cursor.fetchall()
 
@@ -166,8 +167,9 @@ def fetch_user(own_connection, user_id):
         cursor.execute(query)
         result = cursor.fetchone()
 
-        user_data['highest_pitch'] = result[0]
-        user_data['lowest_pitch'] = result[1]
+        if result is not None:
+            user_data['highest_pitch'] = result[0]
+            user_data['lowest_pitch'] = result[1]
 
         own_connection.close()
         return user_data

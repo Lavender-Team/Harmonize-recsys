@@ -62,7 +62,7 @@ try:
                         headers = [('kafka_correlationId', correlation_id)]
 
                         producer.send('musicRecSysReply', value=b'all', headers=headers)
-                        info(" [Kafka] collaborative_all request replied")
+                        info("[Kafka] collaborative_all request replied")
 
                     elif request['command'] == 'collaborative_one':
                         # 응답을 위한 correlationId 확인
@@ -78,13 +78,17 @@ try:
                             df_svd_preds, music_data, user_index_dict, update_time = update_predicted_ratings()
 
                         # user_id 회원에 대해 추천 결과 업데이트
-                        save_recommendations(int(request['user_id']), df_svd_preds, music_data, user_index_dict)
+                        try:
+                            save_recommendations(int(request['user_id']), df_svd_preds, music_data, user_index_dict)
+                        except KeyError:
+                            # 새로운 회원이라 df_svd_preds에 존재하지 않으면
+                            df_svd_preds, music_data, user_index_dict, update_time = collaborative_filtering()
 
                         # 완료 응답
                         headers = [('kafka_correlationId', correlation_id)]
 
                         producer.send('musicRecSysReply', value=bytes(request['user_id']), headers=headers)
-                        info(" [Kafka] collaborative_all request replied")
+                        info("[Kafka] collaborative_one request replied")
 
         # else:
         #    print("메시지 없음, 계속 대기 중...")
