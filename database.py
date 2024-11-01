@@ -9,12 +9,12 @@ def get_mysql_password(file_path):
     return password
 
 
-connection = pymysql.connect(
-    host='127.0.0.1',  # 데이터베이스 호스트 이름 또는 IP 주소
-    user='root',  # 데이터베이스 사용자 이름
-    password=get_mysql_password('mysql_password.txt'),  # 데이터베이스 사용자 비밀번호
-    database='harmonize'  # 연결할 데이터베이스 이름
-)
+# connection = pymysql.connect(
+#     host='127.0.0.1',  # 데이터베이스 호스트 이름 또는 IP 주소
+#     user='root',  # 데이터베이스 사용자 이름
+#     password=get_mysql_password('mysql_password.txt'),  # 데이터베이스 사용자 비밀번호
+#     database='harmonize'  # 연결할 데이터베이스 이름
+# )
 
 
 def get_own_connection():
@@ -26,71 +26,88 @@ def get_own_connection():
     )
 
 
-def close_mysql_connection():
-    global connection
-    if connection:
+def fetch_data_music_and_groups():
+    connection = get_own_connection()
+
+    try:
+        with connection.cursor() as cursor:
+            sql = (f"SELECT m.music_id, m.title, m.genre, m.lyrics, m.release_date, m.likes, m.`view`, "
+                   f"ma.highest_pitch, ma.lowest_pitch, ma.high_pitch_ratio, ma.low_pitch_ratio, "
+                   f"g.group_id, g.group_name, g.group_type "
+                   f"FROM (music m NATURAL JOIN music_analysis ma) NATURAL JOIN groups g "
+                   f"WHERE ma.`status` = 'COMPLETE'")
+            info("[SQL] " + sql)
+            cursor.execute(sql)
+            result = cursor.fetchall()
+
+            df = pd.DataFrame(result)
+
+            return df
+    finally:
         connection.close()
 
 
-def fetch_data_music_and_groups():
-    with connection.cursor() as cursor:
-        sql = (f"SELECT m.music_id, m.title, m.genre, m.lyrics, m.release_date, m.likes, m.`view`, "
-               f"ma.highest_pitch, ma.lowest_pitch, ma.high_pitch_ratio, ma.low_pitch_ratio, "
-               f"g.group_id, g.group_name, g.group_type "
-               f"FROM (music m NATURAL JOIN music_analysis ma) NATURAL JOIN groups g "
-               f"WHERE ma.`status` = 'COMPLETE'")
-        info("[SQL] " + sql)
-        cursor.execute(sql)
-        result = cursor.fetchall()
-
-        df = pd.DataFrame(result)
-
-        return df
-
 def fetch_data_music_and_groups_extended():
-    with connection.cursor() as cursor:
-        sql = (f"SELECT m.music_id, m.title, m.genre, m.lyrics, m.release_date, m.likes, m.`view`, "
-               f"ma.highest_pitch, ma.lowest_pitch, ma.high_pitch_ratio, ma.low_pitch_ratio, "
-               f"ma.pitch_average, ma.pitch_stat, g.group_id, g.group_name, g.group_type "
-               f"FROM (music m NATURAL JOIN music_analysis ma) NATURAL JOIN groups g "
-               f"WHERE ma.`status` = 'COMPLETE'")
-        info("[SQL] " + sql)
-        cursor.execute(sql)
-        result = cursor.fetchall()
+    connection = get_own_connection()
 
-        df = pd.DataFrame(result)
+    try:
+        with connection.cursor() as cursor:
+            sql = (f"SELECT m.music_id, m.title, m.genre, m.lyrics, m.release_date, m.likes, m.`view`, "
+                   f"ma.highest_pitch, ma.lowest_pitch, ma.high_pitch_ratio, ma.low_pitch_ratio, "
+                   f"ma.pitch_average, ma.pitch_stat, g.group_id, g.group_name, g.group_type "
+                   f"FROM (music m NATURAL JOIN music_analysis ma) NATURAL JOIN groups g "
+                   f"WHERE ma.`status` = 'COMPLETE'")
+            info("[SQL] " + sql)
+            cursor.execute(sql)
+            result = cursor.fetchall()
 
-        return df
+            df = pd.DataFrame(result)
+
+            return df
+    finally:
+        connection.close()
 
 
 def fetch_artist():
-    with connection.cursor() as cursor:
-        sql = (f"SELECT gai.group_id, a.artist_id, a.artist_name, a.gender, a.nation "
-               f"FROM (SELECT g.group_id, gm.artist_id FROM groups g NATURAL JOIN group_member gm) gai "
-               f"   INNER JOIN artist a ON gai.artist_id = a.artist_id")
-        info("[SQL] " + sql)
-        cursor.execute(sql)
-        result = cursor.fetchall()
+    connection = get_own_connection()
 
-        df = pd.DataFrame(result)
+    try:
+        with connection.cursor() as cursor:
+            sql = (f"SELECT gai.group_id, a.artist_id, a.artist_name, a.gender, a.nation "
+                   f"FROM (SELECT g.group_id, gm.artist_id FROM groups g NATURAL JOIN group_member gm) gai "
+                   f"   INNER JOIN artist a ON gai.artist_id = a.artist_id")
+            info("[SQL] " + sql)
+            cursor.execute(sql)
+            result = cursor.fetchall()
 
-        return df
+            df = pd.DataFrame(result)
+
+            return df
+    finally:
+        connection.close()
 
 
 def fetch_theme():
-    with connection.cursor() as cursor:
-        sql = (f"SELECT m.music_id, t.theme_name "
-               f"FROM music m INNER JOIN theme t ON m.music_id = t.music_id")
-        info("[SQL] " + sql)
-        cursor.execute(sql)
-        result = cursor.fetchall()
+    connection = get_own_connection()
 
-        df = pd.DataFrame(result)
+    try:
+        with connection.cursor() as cursor:
+            sql = (f"SELECT m.music_id, t.theme_name "
+                   f"FROM music m INNER JOIN theme t ON m.music_id = t.music_id")
+            info("[SQL] " + sql)
+            cursor.execute(sql)
+            result = cursor.fetchall()
 
-        return df
+            df = pd.DataFrame(result)
+
+            return df
+    finally:
+        connection.close()
 
 
 def save_similar_music(music_id, similar_musics, version):
+    connection = get_own_connection()
+
     try:
         with connection.cursor() as cursor:
             connection.begin()
@@ -110,75 +127,92 @@ def save_similar_music(music_id, similar_musics, version):
 
     except Exception as e:
         connection.rollback()
+    finally:
+        connection.close()
 
 
 def fetch_log_from_all_user():
-    with connection.cursor() as cursor:
-        connection.begin()
+    connection = get_own_connection()
 
-        query = "SELECT * FROM log WHERE created_at >= DATE_SUB(NOW(), INTERVAL 3 MONTH)"
-
-        info("[SQL] " + query)
-        cursor.execute(query)
-        result = cursor.fetchall()
-
-        df = pd.DataFrame(result)
-
-        return df
-
-
-def fetch_bookmark(own_connection, user_id):
-    with own_connection.cursor() as cursor:
-        own_connection.begin()
-
-        query = f"SELECT music_id, title FROM bookmark NATURAL JOIN music WHERE user_id = {user_id}"
-
-        info("[SQL] " + query)
-        cursor.execute(query)
-        result = cursor.fetchall()
-
-        df = pd.DataFrame(result)
-
-        own_connection.close()
-        return df
-
-
-def fetch_user(own_connection, user_id):
-    with own_connection.cursor() as cursor:
-        own_connection.begin()
-        user_data = dict()
-
-        query = f"SELECT age, gender FROM user WHERE user_id = {user_id}"
-        cursor.execute(query)
-        result = cursor.fetchone()
-
-        if result is not None:
-            user_data['age'] = result[0]
-            user_data['gender'] = result[1]
-
-        query = f"SELECT genre FROM user_genre WHERE user_user_id = {user_id}"
-        cursor.execute(query)
-        result = cursor.fetchall()
-
-        if len(result) == 3:
-            user_data['genre'] = [result[0][0], result[1][0], result[2][0]]
-
-        query = f"SELECT highest_pitch, lowest_pitch FROM user_analysis WHERE user_id = 1 ORDER BY analysis_date DESC LIMIT 1"
-        cursor.execute(query)
-        result = cursor.fetchone()
-
-        if result is not None:
-            user_data['highest_pitch'] = result[0]
-            user_data['lowest_pitch'] = result[1]
-
-        own_connection.close()
-        return user_data
-
-
-def save_recom_musics(own_connection, user_id, recommendations_data, version):
     try:
-        with own_connection.cursor() as cursor:
-            own_connection.begin()
+        with connection.cursor() as cursor:
+            connection.begin()
+
+            query = "SELECT * FROM log WHERE created_at >= DATE_SUB(NOW(), INTERVAL 3 MONTH)"
+
+            info("[SQL] " + query)
+            cursor.execute(query)
+            result = cursor.fetchall()
+
+            df = pd.DataFrame(result)
+
+            return df
+    finally:
+        connection.close()
+
+
+def fetch_bookmark(user_id):
+    connection = get_own_connection()
+
+    try:
+        with connection.cursor() as cursor:
+            connection.begin()
+
+            query = f"SELECT music_id, title FROM bookmark NATURAL JOIN music WHERE user_id = {user_id}"
+
+            info("[SQL] " + query)
+            cursor.execute(query)
+            result = cursor.fetchall()
+
+            df = pd.DataFrame(result)
+
+            return df
+    finally:
+        connection.close()
+
+
+def fetch_user(user_id):
+    connection = get_own_connection()
+
+    try:
+        with connection.cursor() as cursor:
+            connection.begin()
+            user_data = dict()
+
+            query = f"SELECT age, gender FROM user WHERE user_id = {user_id}"
+            cursor.execute(query)
+            result = cursor.fetchone()
+
+            if result is not None:
+                user_data['age'] = result[0]
+                user_data['gender'] = result[1]
+
+            query = f"SELECT genre FROM user_genre WHERE user_user_id = {user_id}"
+            cursor.execute(query)
+            result = cursor.fetchall()
+
+            if len(result) == 3:
+                user_data['genre'] = [result[0][0], result[1][0], result[2][0]]
+
+            query = f"SELECT highest_pitch, lowest_pitch FROM user_analysis WHERE user_id = 1 ORDER BY analysis_date DESC LIMIT 1"
+            cursor.execute(query)
+            result = cursor.fetchone()
+
+            if result is not None:
+                user_data['highest_pitch'] = result[0]
+                user_data['lowest_pitch'] = result[1]
+
+            return user_data
+    finally:
+        connection.close()
+
+
+def save_recom_musics(user_id, recommendations_data, version):
+    connection = get_own_connection()
+
+    try:
+        with connection.cursor() as cursor:
+            connection.begin()
 
             delete_query = f"DELETE FROM recom_music WHERE target_user = {user_id}"
             cursor.execute(delete_query)
@@ -192,11 +226,11 @@ def save_recom_musics(own_connection, user_id, recommendations_data, version):
 
             cursor.executemany(insert_query, recommendations_data.itertuples(index=False, name=None))
 
-            own_connection.commit()
+            connection.commit()
 
     except Exception as e:
         print(e)
-        own_connection.rollback()
-
-    own_connection.close()
+        connection.rollback()
+    finally:
+        connection.close()
 

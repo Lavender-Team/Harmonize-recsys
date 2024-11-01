@@ -9,7 +9,7 @@ from scipy.sparse.linalg import svds
 from concurrent.futures import ThreadPoolExecutor
 
 from database import (fetch_data_music_and_groups_extended, fetch_log_from_all_user, fetch_artist, fetch_bookmark,
-                      fetch_user, save_recom_musics, get_own_connection)
+                      fetch_user, save_recom_musics)
 from pitch_converter import PitchConverter
 from key_lock_dict import KeyLockDict
 from custom_logger import info
@@ -132,7 +132,7 @@ def save_recommendations(user_id, df_svd_preds, music_data, user_index_dict):
 
 
     # 사용자가 북마크한 음악 조회
-    bookmark_data = fetch_bookmark(get_own_connection(), user_id)
+    bookmark_data = fetch_bookmark(user_id)
     if len(bookmark_data.columns) >= 2:
         bookmark_data.columns = ['music_id', 'title']
 
@@ -146,7 +146,7 @@ def save_recommendations(user_id, df_svd_preds, music_data, user_index_dict):
     recommendations_data = recommendations_data.merge(music_data, on='music_id')
 
     # 사용자 정보 조회
-    user_data = fetch_user(get_own_connection(), user_id)
+    user_data = fetch_user(user_id)
 
     # 사용자의 선호 장르와 나이대에 따른 가산점 계산
     recommendations_data = recommendations_data.apply(update_rating_by_user_data, axis=1, user_data=user_data)
@@ -166,7 +166,7 @@ def save_recommendations(user_id, df_svd_preds, music_data, user_index_dict):
     now = datetime.now()
     version = now.strftime("%Y-%m-%d %H:%M:%S")
 
-    save_recom_musics(get_own_connection(), user_id, recommendations_data, version)
+    save_recom_musics(user_id, recommendations_data, version)
 
     info("[Process] recommendations for user {0} completed".format(user_id))
 

@@ -7,7 +7,7 @@ from collections import Counter
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 
-from database import fetch_data_music_and_groups, fetch_artist, fetch_theme, save_similar_music, close_mysql_connection
+from database import fetch_data_music_and_groups, fetch_artist, fetch_theme, save_similar_music
 from custom_logger import info
 
 okt = Okt()
@@ -64,7 +64,6 @@ def content_based_filtering():
         save_similar_music(music_id, recommendations, version)
 
     info("[SQL] " + "Similar music INSERT completed")
-    close_mysql_connection()
 
 
 def fetch_artist_dict():
