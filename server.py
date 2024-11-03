@@ -103,6 +103,24 @@ def process_request(message):
         producer.send('musicRecSysReply', value=bytes(request['user_id']), headers=headers)
         info("[Kafka] collaborative_one request replied")
 
+    elif request['command'] == 'ping':
+        # 모델 상태 확인
+
+        # 응답을 위한 correlationId 확인
+        correlation_id = None
+        for header in message.headers:
+            if header[0] == 'kafka_correlationId':
+                correlation_id = header[1]
+                break
+
+        if correlation_id is None:
+            info(" [Kafka] No correlation id found")
+            return
+
+        headers = [('kafka_correlationId', correlation_id)]
+
+        producer.send('musicRecSysReply', value=b'pong', headers=headers)
+
 
 try:
     with ThreadPoolExecutor(max_workers=5) as executor:
