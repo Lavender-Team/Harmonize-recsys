@@ -95,7 +95,7 @@ def update_predicted_ratings():
     matrix_user_mean = matrix - user_ratings_mean.reshape(-1, 1)
 
     # 행렬 분해
-    U, sigma, Vt = svds(matrix_user_mean, k=6)
+    U, sigma, Vt = svds(matrix_user_mean, k=8)
     sigma = np.diag(sigma)  #
 
     # U, Sigma, Vt의 내적을 수행하여, 다시 원본 행렬을 복구, 예측 평점을 계산
@@ -158,8 +158,8 @@ def save_recommendations(user_id, df_svd_preds, music_data, user_index_dict):
     recommendations_data.sort_values(by='pred', ascending=False, inplace=True)
     recommendations_data.reset_index(drop=True, inplace=True)
 
-    # 상위 100개만 선택
-    recommendations_data = recommendations_data[:20]
+    # 상위 30개만 선택
+    recommendations_data = recommendations_data[:30]
     recommendations_data = recommendations_data[['music_id', 'pred']]
 
     # 추천 시점 저장
@@ -280,5 +280,5 @@ def update_rating_by_pitch_coverage(row, user_data):
         elif lowest_pitch_met:
             coverage += pct
 
-    row['pred'] += coverage
+    row['pred'] += 2 * coverage
     return row

@@ -194,15 +194,15 @@ def custom_tokenizer(text):
     weighted_tokens = []
     for token in tokens:
         if token.startswith("genre:"):
-            weighted_tokens.append((token, 20))  # 장르 가중치 20
+            weighted_tokens.append((token, 40))  # 장르 가중치 40
         elif token.startswith("group_id:"):
             weighted_tokens.append((token, 20))  # 그룹 가중치 20
         elif token.startswith("group_type:"):
-            weighted_tokens.append((token, 10))  # 그룹 형태 가중치 10
+            weighted_tokens.append((token, 5))  # 그룹 형태 가중치 5
         elif token.startswith("artist:"):
             weighted_tokens.append((token, 30))  # 가수 명 가중치 30
         elif token.startswith("gender:"):
-            weighted_tokens.append((token, 60))  # 성별 가중치 60
+            weighted_tokens.append((token, 40))  # 성별 가중치 z
         elif token.startswith("nation:"):
             weighted_tokens.append((token, 40))  # 국가 가중치 40
         elif token.startswith("theme:"):
